@@ -12,12 +12,12 @@ def send_json(s, json_str):
     
     # Send the expected payload
     s.send(json_str.encode())
-    logger.debug('Sent: %s', json_str)
+    logger.debug('Sent: %s', json.dumps(json.loads(json_str), indent=4))
 
     # Receive the server's response
     msg_length = int().from_bytes(s.recv(4), "little")
     msg = s.recv(msg_length)
-    logger.debug('Received: %s', msg.decode())
+    logger.debug('Received: %s', json.dumps(json.loads(msg.decode()), indent=4))
 
     return json.loads(msg.decode())
 

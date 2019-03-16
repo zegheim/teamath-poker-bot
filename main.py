@@ -31,7 +31,7 @@ def game_engine():
         except json.decoder.JSONDecodeError as e:
             logger.error(e)
             sys.exit(1)
-        logger.debug('Received: %s', response)
+        logger.debug('Received: %s', json.dumps(response, indent=4))
 
         # Handle different types of messages
         if response['type'] == 'status':
