@@ -70,31 +70,84 @@ def decide_action():
 def game_engine(s):
     status = {}
     summary = {}
-    while True:
-        # Listen to the server for message
-        response_length = int().from_bytes(s.recv(4), "little")
-        response = json.loads(s.recv(response_length))
+    with open('game.message', 'w') as f:
+        while True:
+            # Listen to the server for message
+            response_length = int().from_bytes(s.recv(4), "little")
+            response = json.loads(s.recv(response_length))
 
-        if response['type'] == 'status':
-            status = response
-            print('Status: {}'.format(status))
-        elif response['type'] == 'auction':
-            print('Auction result: {}'.format(send_auction(s, response, None, None)))
-        elif response['type'] == 'bet':
-            print('Bet result: {}'.format(send_bet(s, response, status, 100)))
-        elif response['type'] == 'summary':
-            summary = response
-            print('Summary: {}'.format(summary))
-        else:
-            print('Response: {}'.format(response))
+            if response['type'] == 'status':
+                status = response
+                title = 'Status (Hand: {})\n'.format(status['hand'])
+                f.write(title)
+                f.write('-' * len(title))
+
+                f.write('\n\nPot size: {}\n'.format(status['pot']))
+                f.write('Current stake: {}\n\n'.format(status['stake']))
+
+                f.write('Our cards\n')
+                f.write('---------\n')
+                for card in status['pocketCards']:
+                    f.write('{} of {}\n'.format(card['rank'], card['suit']))
+
+                f.write('Community cards\n')
+                f.write('---------------\n')
+                for card in status['communityCards']:
+                    f.write('{} of {}\n'.format(card['rank'], card['suit']))
+                    
+                f.write('Superpowers\n')
+                f.write('-----------\n')
+                for power in status['superPowers']:
+                    f.write('{}: {}\n'.format(power, status['superPowers'][power]))
+                
+                f.write('Players\n')
+                f.write('-------\n')
+                for idx, player in enumerate(status['activePlayers']):
+                    f.write('Player #{}\n'.format(idx + 1))
+                    f.write('---------\n')
+                    f.write('Player ID: {}\n'.format(player['playerId']))
+                    f.write('Stake: {}\n'.format(player['stake']))
+                    f.write('Folded? :{}\n'.format(player['folded']))
+                    f.write('# of chips: {}\n'.format(player['chips']))
+            elif response['type'] == 'auction':
+                f.write('\nWon: {} from auction\n'.format(send_auction(s, response, None, None)['superPower']))
+            elif response['type'] == 'bet':
+                send_bet(s, response, status, 100)
+                print('\nSent bet.\n')
+            elif response['type'] == 'summary':
+                summary = response
+                f.write('Summary for Hand #{}\n'.format(summary['hand']))
+                f.write('--------------------\n')
+                for idx, winner in enumerate(summary['winners']):
+                    f.write('Player ID: {}\n'.format(winner['playerId']))
+                    f.write('# of chips won: {}\n'.format(winner['chips']))
+                    f.write('Best hand: {}\n'.format(winner['bestHand']))
+            else:
+                print('Response: {}'.format(response))
 
 # Connect to the server
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((HOST, PORT))
 
-r = login(s)
+login_response = login(s)
 
-print(r)
+with open('login.details', 'w') as f:
+    f.write('Player ID: {}\n'.format(login_response['playerId']))
+    f.write('# of chips: {}\n'.format(login_response['chips']))
+
+    f.write('\nSuperpowers\n')
+    f.write('-----------\n')
+    for power in login_response['superPowers']:
+       f.write('{}: {}\n'.format(power, login_response['superPowers'][power]))
+
+    f.write('\nSuperpowers reserve\n')
+    f.write('-------------------\n')
+    for power in login_response['superPowersReserve']:
+       f.write('{}: {}\n'.format(power, login_response['superPowersReserve'][power]))
+
+    f.write('\nChips\' reserve: {}\n'.format(login_response['chipsReserve']))
+    f.write('Tournament scores: {}\n'.format(login_response['tournamentsScores']))
+
 
 game = game_engine(s)
 
