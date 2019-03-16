@@ -33,6 +33,60 @@ def login(s, tourney=False):
     return send_json(s, login_str)
 
 
+def send_auction(s, response, superpower, bid):
+    auc_resp = {
+        'type' : 'auction_response',
+        'token' : response['token']
+    }
+
+    if superpower is not None:
+        auc_resp['superPower'] = superpower
+        auc_resp['bid'] = bid
+
+    auc_resp_str = json.dumps(auc_resp)
+    
+    return send_json(s, auc_resp_str)
+
+def send_bet(s, response, status, stake):
+    bet_resp = {
+        'type' : 'bet_response',
+        'token': response['token'],
+        'action': decide_action(),
+        'useReserve': False
+    }
+
+    if bet_resp['action'] == 'raise':
+        bet_resp['stake'] = stake
+    
+    bet_resp_str = json.dumps(bet_resp)
+
+    return send_json(s, bet_resp_str)
+
+
+def decide_action():
+    return 'call'
+
+
+def game_engine(s):
+    status = {}
+    summary = {}
+    while True:
+        # Listen to the server for message
+        response_length = int().from_bytes(s.recv(4), "little")
+        response = json.loads(s.recv(response_length))
+
+        if response['type'] == 'status':
+            status = response
+            print('Status: {}'.format(status))
+        elif response['type'] == 'auction':
+            print('Auction result: {}'.format(send_auction(s, response, None, None)))
+        elif response['type'] == 'bet':
+            print('Bet result: {}'.format(send_bet(s, response, status, 100)))
+        elif response['type'] == 'summary':
+            summary = response
+            print('Summary: {}'.format(summary))
+        else:
+            print('Response: {}'.format(response))
 
 # Connect to the server
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -42,17 +96,8 @@ r = login(s)
 
 print(r)
 
-def game_engine(s):
-    while True:
-        # Listen to the server for message
-        response_length = int().from_bytes(s.recv(4), "little")
-        response = json.loads(s.recv(msg_length))
+game = game_engine(s)
 
 
-        if response['type'] == 'auction':
-            send_auction_resp()
-        elif response['type'] == 'bet':
-            send_bet_resp()
-        else:
-            'etc'
+
 
